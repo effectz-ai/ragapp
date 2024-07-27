@@ -1,5 +1,8 @@
-from pydantic import Field, BaseModel
-from pydantic_settings import BaseSettings
+from typing import Any
+
+from pydantic import BaseModel, Field, computed_field
+
+from src.models.base_env import BaseEnvConfig
 
 
 class OpenAIConfig(BaseModel):
@@ -7,6 +10,11 @@ class OpenAIConfig(BaseModel):
         default=None,
         description="The OpenAI API key to use",
         env="OPENAI_API_KEY",
+    )
+    openai_api_base: str | None = Field(
+        default=None,
+        description="The base URL for the OpenAI API",
+        env="OPENAI_API_BASE",
     )
 
 
@@ -23,6 +31,11 @@ class OllamaConfig(BaseModel):
         default=None,
         description="The base URL for the Ollama API",
         env="OLLAMA_BASE_URL",
+    )
+    ollama_request_timeout: float | None = Field(
+        default=120.0,
+        description="The request timeout for the Ollama API in seconds",
+        env="OLLAMA_REQUEST_TIMEOUT",
     )
 
 
@@ -54,10 +67,46 @@ class AzureOpenAIConfig(BaseModel):
     )
 
 
+class TSystemsConfig(BaseModel):
+    t_systems_llmhub_api_key: str | None = Field(
+        default=None,
+        description="The T-Systems LLMHub API key to use",
+        env="T_SYSTEMS_LLMHUB_API_KEY",
+    )
+    t_systems_llmhub_api_base: str | None = Field(
+        default="https://llm-server.llmhub.t-systems.net/v2",
+        description="The base URL for the T-Systems LLMHub API",
+        env="T_SYSTEMS_LLMHUB_BASE_URL",
+    )
+
+
+class MistralConfig(BaseModel):
+    mistral_api_key: str | None = Field(
+        default=None,
+        description="The Mistral API key to use",
+        env="MISTRAL_API_KEY",
+    )
+
+
+class GroqConfig(BaseModel):
+    groq_api_key: str | None = Field(
+        default=None,
+        description="The Groq API key to use",
+        env="GROQ_API_KEY",
+    )
+
+
 # We're using inheritance to flatten all the fields into a single class
 # Todo: Refactor API to nested structure
-class ProviderConfig(
-    BaseSettings, OpenAIConfig, GeminiConfig, OllamaConfig, AzureOpenAIConfig
+class ModelConfig(
+    BaseEnvConfig,
+    OpenAIConfig,
+    GeminiConfig,
+    OllamaConfig,
+    AzureOpenAIConfig,
+    TSystemsConfig,
+    MistralConfig,
+    GroqConfig,
 ):
     model_provider: str | None = Field(
         default=None,
@@ -79,9 +128,33 @@ class ProviderConfig(
         extra = "ignore"
         protected_namespaces = ("settings_",)
 
-    def model_post_init(self, __context: dict[str, any]) -> None:
+    def model_post_init(self, __context: dict[str, Any]) -> None:
         # llama_index will be conflicted if the AZURE_OPENAI_API_KEY and OPENAI_API_KEY are used together.
         # so we must clean OPENAI_API_KEY if the model_provider is azure-openai
         # Todo: Refactor API to nested structure, clean the unused fields in the respective classes
         if self.model_provider == "azure-openai":
             self.openai_api_key = None
+
+    @computed_field
+    def configured(self) -> bool:
+        match self.model_provider:
+            case "openai":
+                return self.openai_api_key is not None
+            case "gemini":
+                return self.google_api_key is not None
+            case "ollama":
+                return True
+            case "azure-openai":
+                return True
+            case "t-systems":
+                return self.t_systems_llmhub_api_key is not None
+            case "mistral":
+                return self.mistral_api_key is not None
+            case "groq":
+                return self.groq_api_key is not None
+            case _:
+                return False
+
+    @classmethod
+    def get_config(cls) -> "ModelConfig":
+        return ModelConfig()
