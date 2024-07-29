@@ -1,4 +1,4 @@
-<p align="center"><img alt="Logo - RAGapp" src="docs/logo.png"></p>
+<p align="center"><img alt="Logo - EffectZ" src="docs/logo.png"></p>
 
 <p align="center"><strong>The easiest way to use Agentic RAG in any enterprise.</strong></p>
 
