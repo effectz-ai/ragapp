@@ -1,5 +1,11 @@
 # ragbox
 
+## 0.0.19
+
+### Patch Changes
+
+- fd340ad: Add support for gpt-4o-mini model
+
 ## 0.0.18
 
 ### Patch Changes
